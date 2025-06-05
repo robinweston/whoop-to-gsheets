@@ -114,27 +114,33 @@ def update_running_sheet(sheet_name, creds_path, running_per_day):
         row_idx = week_row_map.get(week_monday)
         col_idx = day_columns.get(day_name)
         if row_idx and col_idx is not None:
-            logger.info(f"Updating {date} ({day_name}) in week {week_monday}: {minutes} min")
-            worksheet.update_cell(row_idx, col_idx+1, minutes)
-            updates += 1
+            if minutes > 0:
+                logger.info(f"Updating {date} ({day_name}) in week {week_monday}: {minutes} min")
+                worksheet.update_cell(row_idx, col_idx+1, minutes)
+                updates += 1
+            else:
+                logger.info(f"Skipping update for {date} ({day_name}) in week {week_monday}: 0 min (cell left blank)")
         else:
             logger.error(f"Could not find cell for {date} ({day_name}) in week starting {week_monday}")
     logger.info(f"Sheet update complete. {updates} cell(s) updated.")
     return updates
 
 @main.command()
-@click.option('--start-date', default=default_start_date, show_default='5 days ago', help='Start date (YYYY-MM-DD)')
-@click.option('--end-date', default=default_end_date, show_default='today', help='End date (YYYY-MM-DD)')
+@click.option('--days-ago', default=14, show_default=True, help='Number of days ago to start syncing from (up to today)')
 @click.option('--sheet-name', default='Robin Strength Program', show_default=True, help='Google Sheet name')
 @click.option('--creds-path', default='google-creds.json', show_default=True, help='Path to Google service account credentials JSON')
-def sync(start_date, end_date, sheet_name, creds_path):
-    logger.info(f"Starting sync for {sheet_name} from {start_date} to {end_date}")
+def sync(days_ago, sheet_name, creds_path):
+    logger.info(f"Starting sync for {sheet_name} for the last {days_ago} days")
     load_dotenv()
     username = os.getenv('WHOOP_USERNAME')
     password = os.getenv('WHOOP_PASSWORD')
     if not username or not password:
         logger.error('WHOOP_USERNAME and WHOOP_PASSWORD must be set in .env')
         return
+
+    from datetime import date, timedelta
+    end_date = date.today().strftime('%Y-%m-%d')
+    start_date = (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
 
     running_per_day = get_running_activities(username, password, start_date, end_date)
     if not running_per_day:
