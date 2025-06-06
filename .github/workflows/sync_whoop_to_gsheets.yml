@@ -19,7 +19,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Write google-creds.json
-        run: printf '%s' "${{ secrets.GOOGLE_CREDS_JSON }}" > google-creds.json
+        run: echo "${{ secrets.GOOGLE_CREDS_JSON }}" | base64 -d > google-creds.json
 
       - name: Run sync_whoop_to_gsheets.py
         env:
