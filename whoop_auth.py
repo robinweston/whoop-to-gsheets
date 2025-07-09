@@ -8,9 +8,7 @@ from requests_oauthlib import OAuth2Session
 load_dotenv()
 
 # Configure logging
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # WHOOP OAuth configuration
 CLIENT_ID = os.getenv("WHOOP_CLIENT_ID")
@@ -38,31 +36,27 @@ def __save_whoop_token(token, token_file):
 
 def get_valid_whoop_token(token_file):
     token = __get_whoop_token(token_file)
-    # Check if token is expired
-    import time
-
-    if token.get("expires_at") and token["expires_at"] < time.time():
-        logger.info("Access token expired, refreshing...")
-        extra = {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-        }
-        oauth = OAuth2Session(
-            CLIENT_ID,
-            token=token,
-            auto_refresh_url=TOKEN_URL,
-            auto_refresh_kwargs=extra,
-            token_updater=lambda t: __save_whoop_token(t, token_file),
-        )
-        new_token = oauth.refresh_token(
-            TOKEN_URL,
-            refresh_token=token["refresh_token"],
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-        )
-        __save_whoop_token(new_token, token_file)
-        return new_token["access_token"]
-    return token["access_token"]
+    logger.info("Refreshing WHOOP access token...")
+    extra = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    oauth = OAuth2Session(
+        CLIENT_ID,
+        token=token,
+        auto_refresh_url=TOKEN_URL,
+        auto_refresh_kwargs=extra,
+        token_updater=lambda t: __save_whoop_token(t, token_file),
+    )
+    new_token = oauth.refresh_token(
+        TOKEN_URL,
+        refresh_token=token["refresh_token"],
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+    )
+    __save_whoop_token(new_token, token_file)
+    logger.info(f"Refreshed token and saved to {token_file}")
+    return new_token["access_token"]
 
 
 def start_auth_web_server(token_file, port=5000):

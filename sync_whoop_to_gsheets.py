@@ -3,8 +3,11 @@ import logging
 from dotenv import load_dotenv
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from whoop_auth import start_auth_web_server, get_valid_whoop_token
+import requests
+
+logging.basicConfig(level=logging.INFO, force=True)
 
 load_dotenv()
 
@@ -18,11 +21,6 @@ def main(ctx):
     if ctx.invoked_subcommand is None:
         ctx.invoke(sync)
 
-def default_start_date():
-    return (datetime.today() - timedelta(days=5)).strftime('%Y-%m-%d')
-
-def default_end_date():
-    return datetime.today().strftime('%Y-%m-%d')
 
 def parse_whoop_local_datetime(dt_str, timezone_offset):
     dt_utc = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
@@ -32,24 +30,30 @@ def parse_whoop_local_datetime(dt_str, timezone_offset):
     local_tz = timezone(offset)
     return dt_utc.astimezone(local_tz)
 
-def parse_whoop_local_date(start_str, timezone_offset):
-    """Parse WHOOP UTC start time and timezone_offset to local date."""
-    return parse_whoop_local_datetime(start_str, timezone_offset).date()
-
 def get_running_activities_with_token(access_token, start_date, end_date):
     logger.info(f"Fetching workouts from {start_date} to {end_date} using OAuth token")
-    import requests
-    url = f"https://api.prod.whoop.com/activities/v1/workouts?start={start_date}&end={end_date}"
+    base_url = "https://api.prod.whoop.com/developer/v2/activity/workout"
     headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.get(url, headers=headers)
+    params = {"start": start_date, "end": end_date, "limit": 25}
+    all_workouts = []
+
+    logger.info(f"Requesting page with params: {params}")
+    resp = requests.get(base_url, headers=headers, params=params)
     if resp.status_code != 200:
-        logger.error(f"Failed to fetch workouts: {resp.status_code} {resp.text}")
-        return {}
-    workouts = resp.json()
-    logger.info(f"Fetched {len(workouts) if workouts else 0} workouts from WHOOP")
+        raise Exception(f"Failed to fetch workouts: {resp.status_code} {resp.text}")
+    data = resp.json()
+    workouts = data.get("records", [])
+    logger.info(f"Fetched {len(workouts)} records on this page")
+    if workouts:
+        ids = [w.get('id') for w in workouts]
+        logger.info(f"Record IDs on this page: {ids}")
+    all_workouts.extend(workouts)
+
+    logger.info(f"Fetched {len(all_workouts)} workouts from WHOOP")
     running_per_day = {}
+
     RUNNING_SPORT_IDS = {0}
-    for w in workouts or []:
+    for w in all_workouts:
         if w.get('sport_id') in RUNNING_SPORT_IDS:
             start_dt = parse_whoop_local_datetime(w['start'], w.get('timezone_offset', '+00:00'))
             end_dt = parse_whoop_local_datetime(w['end'], w.get('timezone_offset', '+00:00'))
@@ -57,8 +61,13 @@ def get_running_activities_with_token(access_token, start_date, end_date):
             if duration_min == 0:
                 logger.warning(f"Workout {w.get('id')} on {start_dt.date()} has 0 duration!")
             workout_date = start_dt.date()
-            running_per_day[workout_date] = running_per_day.get(workout_date, 0) + duration_min
+
             logger.info(f"Found running workout on {workout_date}: {duration_min} min")
+            if workout_date not in running_per_day:
+                running_per_day[workout_date] = 0
+            running_per_day[workout_date] += duration_min
+            logger.info(f"Total running minutes for {workout_date}: {running_per_day[workout_date]}")
+
     logger.info(f"Aggregated running minutes for {len(running_per_day)} day(s)")
     return running_per_day
 
@@ -138,9 +147,9 @@ def update_running_sheet(sheet_name, creds_path, running_per_day):
 def sync(days_ago, sheet_name, creds_path, token_file):
     logger.info(f"Starting sync for {sheet_name} for the last {days_ago} days")
     access_token = get_valid_whoop_token(token_file=token_file)
-    from datetime import date, timedelta
-    end_date = date.today().strftime('%Y-%m-%d')
-    start_date = (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+    # Use full ISO 8601 UTC date-time strings for WHOOP API
+    end_date = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime('%Y-%m-%dT%H:%M:%S.000Z')
     running_per_day = get_running_activities_with_token(access_token, start_date, end_date)
     if not running_per_day:
         logger.warning('No running workouts found in the given date range.')
