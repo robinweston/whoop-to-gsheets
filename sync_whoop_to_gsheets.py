@@ -1,14 +1,14 @@
-import os
 import click
 import logging
 from dotenv import load_dotenv
-from whoop import WhoopClient
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
+from whoop_auth import start_auth_web_server, get_valid_whoop_token
+
+load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
 @click.group(invoke_without_command=True)
@@ -36,11 +36,16 @@ def parse_whoop_local_date(start_str, timezone_offset):
     """Parse WHOOP UTC start time and timezone_offset to local date."""
     return parse_whoop_local_datetime(start_str, timezone_offset).date()
 
-def get_running_activities(username, password, start_date, end_date):
-    logger.info(f"Authenticating with WHOOP as {username}")
-    client = WhoopClient(username, password)
-    logger.info(f"Fetching workouts from {start_date} to {end_date}")
-    workouts = client.get_workout_collection(start_date, end_date)
+def get_running_activities_with_token(access_token, start_date, end_date):
+    logger.info(f"Fetching workouts from {start_date} to {end_date} using OAuth token")
+    import requests
+    url = f"https://api.prod.whoop.com/activities/v1/workouts?start={start_date}&end={end_date}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    resp = requests.get(url, headers=headers)
+    if resp.status_code != 200:
+        logger.error(f"Failed to fetch workouts: {resp.status_code} {resp.text}")
+        return {}
+    workouts = resp.json()
     logger.info(f"Fetched {len(workouts) if workouts else 0} workouts from WHOOP")
     running_per_day = {}
     RUNNING_SPORT_IDS = {0}
@@ -127,28 +132,28 @@ def update_running_sheet(sheet_name, creds_path, running_per_day):
 
 @main.command()
 @click.option('--days-ago', default=14, show_default=True, help='Number of days ago to start syncing from (up to today)')
-@click.option('--sheet-name', default='Robin Strength Program', show_default=True, help='Google Sheet name')
+@click.option('--sheet-name', help='Google Sheet name')
 @click.option('--creds-path', default='google-creds.json', show_default=True, help='Path to Google service account credentials JSON')
-def sync(days_ago, sheet_name, creds_path):
+@click.option('--token-file', default='whoop-tokens.json', show_default=True, help='Path to WHOOP OAuth token JSON file')
+def sync(days_ago, sheet_name, creds_path, token_file):
     logger.info(f"Starting sync for {sheet_name} for the last {days_ago} days")
-    load_dotenv()
-    username = os.getenv('WHOOP_USERNAME')
-    password = os.getenv('WHOOP_PASSWORD')
-    if not username or not password:
-        logger.error('WHOOP_USERNAME and WHOOP_PASSWORD must be set in .env')
-        return
-
+    access_token = get_valid_whoop_token(token_file=token_file)
     from datetime import date, timedelta
     end_date = date.today().strftime('%Y-%m-%d')
     start_date = (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
-
-    running_per_day = get_running_activities(username, password, start_date, end_date)
+    running_per_day = get_running_activities_with_token(access_token, start_date, end_date)
     if not running_per_day:
         logger.warning('No running workouts found in the given date range.')
         return
-
     updates = update_running_sheet(sheet_name, creds_path, running_per_day)
     logger.info(f"Updated {updates} running day(s) in the Running sheet.")
+
+@main.command(name='auth')
+@click.option('--token-file', default='whoop-tokens.json', show_default=True, help='Path to WHOOP OAuth token JSON file')
+@click.option('--port', default=5000, show_default=True, help='Port for local HTTPS server')
+def whoop_auth(token_file, port):
+    """Start a local HTTPS server to obtain WHOOP OAuth tokens and save them to a JSON file."""
+    start_auth_web_server(token_file=token_file, port=port)
 
 if __name__ == "__main__":
     main() 

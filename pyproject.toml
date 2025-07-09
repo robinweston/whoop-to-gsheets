@@ -2,7 +2,9 @@
 name = "sync-whoop-gsheets"
 version = "0.1.0"
 description = "CLI to sync WHOOP activities to Google Sheets"
-authors = ["Robin Weston"]
+authors = [
+    { name = "Robin Weston" }
+]
 readme = "README.md"
 requires-python = ">=3.10, <4.0"
 dependencies = [
@@ -10,7 +12,9 @@ dependencies = [
     "gspread",
     "google-auth",
     "python-dotenv",
-    "click"
+    "click",
+    "flask",
+    "requests-oauthlib"
 ]
 
 [project.scripts]
