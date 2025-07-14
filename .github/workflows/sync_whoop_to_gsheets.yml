@@ -24,6 +24,22 @@ jobs:
       - name: Write whoop-tokens.json
         run: echo "${{ secrets.WHOOP_TOKENS_JSON }}" | base64 -d > whoop-tokens.json
 
+
+      - name: Base64 encode whoop-tokens.json
+        id: encode
+        run: |
+          base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
+          echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
+
+      - name: Create or update WHOOP_TOKENS_JSON secret
+        uses: ekowcharles/update-github-actions-secret@0.0.5
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.event.repository.name }}
+          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
+          SECRET_NAME: WHOOP_TOKENS_JSON_NEW
+          SECRET_VALUE: ${{ steps.encode.outputs.ENCODED }}
+
       - name: Run sync_whoop_to_gsheets.py
         env:
           WHOOP_USERNAME: ${{ secrets.WHOOP_USERNAME }}
