@@ -39,7 +39,7 @@ jobs:
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
-        uses: ekowcharles/update-github-actions-secret@v1
+        uses: ekowcharles/update-github-actions-secret@0.0.5
         env:
           OWNER: ${{ github.repository_owner }}
           REPOSITORY: ${{ github.event.repository.name }}
