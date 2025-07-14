@@ -38,11 +38,11 @@ jobs:
           base64 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
-      - name: Update WHOOP_TOKENS_JSON secret
-        uses: punitkashyup/update-secret-action@v1.0.6
-        with:
-          repository_owner: ${{ github.repository_owner }}
-          repository_name: ${{ github.event.repository.name }}
-          secret_name: WHOOP_TOKENS_JSON
-          new_secret_value: ${{ steps.encode.outputs.ENCODED }}
-          github_token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
+      - name: Create or update WHOOP_TOKENS_JSON secret
+        uses: ekowcharles/update-github-actions-secret@v1
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.event.repository.name }}
+          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
+          SECRET_NAME: WHOOP_TOKENS_JSON
+          SECRET_VALUE: ${{ steps.encode.outputs.ENCODED }}
