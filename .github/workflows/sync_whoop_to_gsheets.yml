@@ -31,14 +31,14 @@ jobs:
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON_NEW_2 secret
-        uses: glichm/create-github-secret-action@v1
+        uses: gliech/create-github-secret-action@v1
         with:
           name: WHOOP_TOKENS_JSON_NEW_3
           value: ${{ steps.encode-test.outputs.ENCODED }}
           token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
 
       - name: Create or update WHOOP_TOKENS_JSON_NEW secret
-        uses: glichm/create-github-secret-action@v1
+        uses: gliech/create-github-secret-action@v1
         with:
           name: WHOOP_TOKENS_JSON_NEW
           value: ${{ steps.encode-test.outputs.ENCODED }}
@@ -59,7 +59,7 @@ jobs:
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
-        uses: glichm/create-github-secret-action@v1
+        uses: gliech/create-github-secret-action@v1
         with:
           name: WHOOP_TOKENS_JSON
           value: ${{ steps.encode.outputs.ENCODED }}
