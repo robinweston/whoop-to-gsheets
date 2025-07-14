@@ -30,23 +30,19 @@ jobs:
           base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
-      - name: Create or update WHOOP_TOKENS_JSON secret
-        uses: ekowcharles/update-github-actions-secret@0.0.5
-        env:
-          OWNER: ${{ github.repository_owner }}
-          REPOSITORY: ${{ github.event.repository.name }}
-          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
-          SECRET_NAME: WHOOP_TOKENS_JSON_NEW_2
-          SECRET_VALUE: ${{ steps.encode-test.outputs.ENCODED }}
+      - name: Create or update WHOOP_TOKENS_JSON_NEW_2 secret
+        uses: glichm/create-github-secret-action@v1
+        with:
+          name: WHOOP_TOKENS_JSON_NEW_3
+          value: ${{ steps.encode-test.outputs.ENCODED }}
+          token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
 
-      - name: Create or update WHOOP_TOKENS_JSON secret
-        uses: ekowcharles/update-github-actions-secret@0.0.5
-        env:
-          OWNER: ${{ github.repository_owner }}
-          REPOSITORY: ${{ github.event.repository.name }}
-          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
-          SECRET_NAME: WHOOP_TOKENS_JSON_NEW
-          SECRET_VALUE: ${{ steps.encode-test.outputs.ENCODED }}
+      - name: Create or update WHOOP_TOKENS_JSON_NEW secret
+        uses: glichm/create-github-secret-action@v1
+        with:
+          name: WHOOP_TOKENS_JSON_NEW
+          value: ${{ steps.encode-test.outputs.ENCODED }}
+          token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
 
       - name: Run sync_whoop_to_gsheets.py
         env:
@@ -63,10 +59,8 @@ jobs:
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
-        uses: ekowcharles/update-github-actions-secret@0.0.5
-        env:
-          OWNER: ${{ github.repository_owner }}
-          REPOSITORY: ${{ github.event.repository.name }}
-          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
-          SECRET_NAME: WHOOP_TOKENS_JSON
-          SECRET_VALUE: ${{ steps.encode.outputs.ENCODED }}
+        uses: glichm/create-github-secret-action@v1
+        with:
+          name: WHOOP_TOKENS_JSON
+          value: ${{ steps.encode.outputs.ENCODED }}
+          token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
