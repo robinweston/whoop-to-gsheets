@@ -35,7 +35,7 @@ jobs:
       - name: Base64 encode whoop-tokens.json
         id: encode
         run: |
-          base64 whoop-tokens.json > whoop-tokens.json.b64
+          base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
