@@ -36,6 +36,15 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPOSITORY: ${{ github.event.repository.name }}
           ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
+          SECRET_NAME: WHOOP_TOKENS_JSON_NEW_2
+          SECRET_VALUE: ${{ steps.encode-test.outputs.ENCODED }}
+
+      - name: Create or update WHOOP_TOKENS_JSON secret
+        uses: ekowcharles/update-github-actions-secret@0.0.5
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.event.repository.name }}
+          ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
           SECRET_NAME: WHOOP_TOKENS_JSON_NEW
           SECRET_VALUE: ${{ steps.encode-test.outputs.ENCODED }}
 
