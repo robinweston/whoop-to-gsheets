@@ -24,7 +24,6 @@ jobs:
       - name: Write whoop-tokens.json
         run: echo "${{ secrets.WHOOP_TOKENS_JSON }}" | base64 -d > whoop-tokens.json
 
-
       - name: Base64 encode whoop-tokens.json
         id: encode-test
         run: |
