@@ -31,3 +31,18 @@ jobs:
           WHOOP_CLIENT_ID: ${{ secrets.WHOOP_CLIENT_ID }}
           WHOOP_CLIENT_SECRET: ${{ secrets.WHOOP_CLIENT_SECRET }}
         run: uv run sync_whoop_to_gsheets.py sync --days-ago 14 --sheet-name "Robin Strength Program" --creds-path google-creds.json
+
+      - name: Base64 encode whoop-tokens.json
+        id: encode
+        run: |
+          base64 whoop-tokens.json > whoop-tokens.json.b64
+          echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
+
+      - name: Update WHOOP_TOKENS_JSON secret
+        uses: punitkashyup/update-secret-action@v1
+        with:
+          repository_owner: ${{ github.repository_owner }}
+          repository_name: ${{ github.event.repository.name }}
+          secret_name: WHOOP_TOKENS_JSON
+          new_secret_value: ${{ steps.encode.outputs.ENCODED }}
+          github_token: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
