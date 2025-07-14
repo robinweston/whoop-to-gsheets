@@ -26,7 +26,7 @@ jobs:
 
 
       - name: Base64 encode whoop-tokens.json
-        id: encode
+        id: encode-test
         run: |
           base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
@@ -38,7 +38,7 @@ jobs:
           REPOSITORY: ${{ github.event.repository.name }}
           ACCESS_TOKEN: ${{ secrets.UPDATE_SECRETS_GITHUB_TOKEN }}
           SECRET_NAME: WHOOP_TOKENS_JSON_NEW
-          SECRET_VALUE: ${{ steps.encode.outputs.ENCODED }}
+          SECRET_VALUE: ${{ steps.encode-test.outputs.ENCODED }}
 
       - name: Run sync_whoop_to_gsheets.py
         env:
