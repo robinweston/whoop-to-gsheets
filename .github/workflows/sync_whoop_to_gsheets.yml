@@ -30,7 +30,7 @@ jobs:
           WHOOP_PASSWORD: ${{ secrets.WHOOP_PASSWORD }}
           WHOOP_CLIENT_ID: ${{ secrets.WHOOP_CLIENT_ID }}
           WHOOP_CLIENT_SECRET: ${{ secrets.WHOOP_CLIENT_SECRET }}
-        run: uv run sync_whoop_to_gsheets.py sync --days-ago 14 --sheet-name "Robin Strength Program" --creds-path google-creds.json
+        run: uv run sync_whoop_to_gsheets.py sync --days-ago 42 --sheet-name "Robin Strength Program" --creds-path google-creds.json
 
       - name: Base64 encode whoop-tokens.json
         id: encode
