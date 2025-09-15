@@ -36,37 +36,70 @@ def get_running_activities_with_token(access_token, start_date, end_date):
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {"start": start_date, "end": end_date, "limit": 25}
     all_workouts = []
+    page_count = 0
 
-    logger.info(f"Requesting page with params: {params}")
-    resp = requests.get(base_url, headers=headers, params=params)
-    if resp.status_code != 200:
-        raise Exception(f"Failed to fetch workouts: {resp.status_code} {resp.text}")
-    data = resp.json()
-    workouts = data.get("records", [])
-    logger.info(f"Fetched {len(workouts)} records on this page")
-    if workouts:
-        ids = [w.get('id') for w in workouts]
-        logger.info(f"Record IDs on this page: {ids}")
-    all_workouts.extend(workouts)
+    while True:
+        page_count += 1
+        logger.info(f"Requesting page {page_count} with params: {params}")
+        resp = requests.get(base_url, headers=headers, params=params)
+        if resp.status_code != 200:
+            raise Exception(f"Failed to fetch workouts: {resp.status_code} {resp.text}")
+        data = resp.json()
+        workouts = data.get("records", [])
+        logger.info(f"Fetched {len(workouts)} records on page {page_count}")
+        if workouts:
+            ids = [w.get('id') for w in workouts]
+            logger.info(f"Record IDs on page {page_count}: {ids}")
+        all_workouts.extend(workouts)
 
-    logger.info(f"Fetched {len(all_workouts)} workouts from WHOOP")
+        # Check for next_token in the response (WHOOP API uses 'next_token' field)
+        next_token = data.get("next_token")
+        if not next_token:
+            logger.info(f"No more pages available. Completed pagination after {page_count} page(s)")
+            break
+
+        # Update params for next request using 'nextToken' parameter (WHOOP API specification)
+        params["nextToken"] = next_token
+        logger.info(f"Added pagination token for next request: {next_token}")
+
+        # Safety check to prevent infinite loops
+        if page_count > 100:  # Reasonable upper limit
+            logger.warning(f"Reached maximum page limit ({page_count}). Stopping pagination to prevent infinite loop.")
+            break
+
+    logger.info(f"Fetched {len(all_workouts)} workouts from WHOOP across {page_count} page(s)")
     running_per_day = {}
 
+    # Track unique workout IDs during processing
+    seen_workout_ids = set()
+    
     RUNNING_SPORT_IDS = {0}
     for w in all_workouts:
-        if w.get('sport_id') in RUNNING_SPORT_IDS:
-            start_dt = parse_whoop_local_datetime(w['start'], w.get('timezone_offset', '+00:00'))
-            end_dt = parse_whoop_local_datetime(w['end'], w.get('timezone_offset', '+00:00'))
-            duration_min = int((end_dt - start_dt).total_seconds() / 60)
-            if duration_min == 0:
-                logger.warning(f"Workout {w.get('id')} on {start_dt.date()} has 0 duration!")
-            workout_date = start_dt.date()
+        workout_id = w.get('id')
+        if not workout_id:
+            logger.warning(f"Skipping workout with missing ID: {w}")
+            continue
+        if workout_id in seen_workout_ids:
+            logger.warning(f"Skipping duplicate workout ID: {workout_id}")
+            continue
+        if w.get('sport_id') not in RUNNING_SPORT_IDS:
+            continue
+            
+        start_dt = parse_whoop_local_datetime(w['start'], w.get('timezone_offset', '+00:00'))
+        end_dt = parse_whoop_local_datetime(w['end'], w.get('timezone_offset', '+00:00'))
+        duration_min = int((end_dt - start_dt).total_seconds() / 60)
+        if duration_min == 0:
+            logger.warning(f"Workout {w.get('id')} on {start_dt.date()} has 0 duration!")
+        workout_date = start_dt.date()
 
-            logger.info(f"Found running workout on {workout_date}: {duration_min} min")
-            if workout_date not in running_per_day:
-                running_per_day[workout_date] = 0
-            running_per_day[workout_date] += duration_min
-            logger.info(f"Total running minutes for {workout_date}: {running_per_day[workout_date]}")
+        logger.info(f"Found running workout on {workout_date}: {duration_min} min")
+        if workout_date not in running_per_day:
+            running_per_day[workout_date] = 0
+        running_per_day[workout_date] += duration_min
+        logger.info(f"Total running minutes for {workout_date}: {running_per_day[workout_date]}")
+        
+        # Add to seen IDs after successful processing
+        seen_workout_ids.add(workout_id)
 
     logger.info(f"Aggregated running minutes for {len(running_per_day)} day(s)")
     return running_per_day
