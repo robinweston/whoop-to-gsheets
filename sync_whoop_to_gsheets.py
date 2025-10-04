@@ -6,6 +6,8 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone, date
 from whoop_auth import start_auth_web_server, get_valid_whoop_token
 import requests
+import time
+import random
 
 logging.basicConfig(level=logging.INFO, force=True)
 
@@ -13,6 +15,26 @@ load_dotenv()
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+def retry_with_backoff(max_retries=3, base_delay=1, max_delay=60):
+    """Decorator for retrying functions with exponential backoff"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries:
+                        logger.error(f"Failed after {max_retries} retries: {e}")
+                        raise
+                    
+                    # Calculate delay with exponential backoff and jitter
+                    delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -154,6 +176,11 @@ def update_running_sheet(sheet_name, creds_path, running_per_day):
             except Exception:
                 continue
 
+    @retry_with_backoff(max_retries=3, base_delay=2, max_delay=30)
+    def update_single_cell(row_idx, col_idx, minutes):
+        """Update a single cell with retry logic"""
+        worksheet.update_cell(row_idx, col_idx+1, minutes)
+
     updates = 0
     for date, minutes in running_per_day.items():
         week_monday = get_monday(date)
@@ -163,7 +190,7 @@ def update_running_sheet(sheet_name, creds_path, running_per_day):
         if row_idx and col_idx is not None:
             if minutes > 0:
                 logger.info(f"Updating {date} ({day_name}) in week {week_monday}: {minutes} min")
-                worksheet.update_cell(row_idx, col_idx+1, minutes)
+                update_single_cell(row_idx, col_idx, minutes)
                 updates += 1
             else:
                 logger.info(f"Skipping update for {date} ({day_name}) in week {week_monday}: 0 min (cell left blank)")

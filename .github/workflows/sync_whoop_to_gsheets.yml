@@ -25,6 +25,7 @@ jobs:
         run: echo "${{ secrets.WHOOP_TOKENS_JSON }}" | base64 -d > whoop-tokens.json
 
       - name: Run sync_whoop_to_gsheets.py
+        id: sync
         env:
           WHOOP_USERNAME: ${{ secrets.WHOOP_USERNAME }}
           WHOOP_PASSWORD: ${{ secrets.WHOOP_PASSWORD }}
@@ -34,11 +35,13 @@ jobs:
 
       - name: Base64 encode whoop-tokens.json
         id: encode
+        if: always()  # Run even if sync step failed
         run: |
           base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
+        if: always()  # Run even if sync step failed
         uses: gliech/create-github-secret-action@v1
         with:
           name: WHOOP_TOKENS_JSON
