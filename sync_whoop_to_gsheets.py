@@ -55,6 +55,10 @@ def parse_whoop_local_datetime(dt_str, timezone_offset):
     # Normalize the timezone offset string
     timezone_offset = timezone_offset.strip()
     
+    # Handle 'Z' which means UTC
+    if timezone_offset == 'Z':
+        return dt_utc
+    
     # Validate format: should start with + or -
     if not (timezone_offset.startswith('+') or timezone_offset.startswith('-')):
         logger.warning(f"Invalid timezone_offset format '{timezone_offset}', defaulting to UTC. dt_str: {dt_str}")
