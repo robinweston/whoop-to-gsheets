@@ -46,11 +46,29 @@ def main(ctx):
 
 def parse_whoop_local_datetime(dt_str, timezone_offset):
     dt_utc = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-    sign = 1 if timezone_offset[0] == '+' else -1
-    hours, minutes = map(int, timezone_offset[1:].split(':'))
-    offset = timedelta(hours=hours, minutes=minutes) * sign
-    local_tz = timezone(offset)
-    return dt_utc.astimezone(local_tz)
+    
+    # Handle empty or None timezone_offset
+    if not timezone_offset or timezone_offset.strip() == '':
+        logger.warning(f"Empty timezone_offset encountered, defaulting to UTC. dt_str: {dt_str}")
+        return dt_utc
+    
+    # Normalize the timezone offset string
+    timezone_offset = timezone_offset.strip()
+    
+    # Validate format: should start with + or -
+    if not (timezone_offset.startswith('+') or timezone_offset.startswith('-')):
+        logger.warning(f"Invalid timezone_offset format '{timezone_offset}', defaulting to UTC. dt_str: {dt_str}")
+        return dt_utc
+    
+    try:
+        sign = 1 if timezone_offset[0] == '+' else -1
+        hours, minutes = map(int, timezone_offset[1:].split(':'))
+        offset = timedelta(hours=hours, minutes=minutes) * sign
+        local_tz = timezone(offset)
+        return dt_utc.astimezone(local_tz)
+    except (ValueError, IndexError) as e:
+        logger.warning(f"Error parsing timezone_offset '{timezone_offset}': {e}. Defaulting to UTC. dt_str: {dt_str}")
+        return dt_utc
 
 def get_running_activities_with_token(access_token, start_date, end_date):
     logger.info(f"Fetching workouts from {start_date} to {end_date} using OAuth token")
