@@ -9,10 +9,12 @@ on:
       - main
 
 jobs:
-  sync:
+  keepalive:
     runs-on: ubuntu-latest
     steps:
       - name: Keep workflow enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "${GITHUB_WORKFLOW_REF:?}" in
             "${GITHUB_REPOSITORY:?}"/.github/workflows/*.y*ml@*) ;;
@@ -22,6 +24,9 @@ jobs:
           workflow="${workflow#${GITHUB_REPOSITORY}/.github/workflows/}"
           gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/enable"
 
+  sync:
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
