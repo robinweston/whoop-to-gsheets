@@ -11,6 +11,8 @@ on:
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - name: Keep workflow enabled
         env:
@@ -52,11 +54,15 @@ jobs:
         id: encode
         if: always()  # Run even if sync step failed
         run: |
+          if [ ! -f whoop-tokens.json ]; then
+            echo "::error::whoop-tokens.json missing - not overwriting WHOOP_TOKENS_JSON secret"
+            exit 1
+          fi
           base64 -w 0 whoop-tokens.json > whoop-tokens.json.b64
           echo "ENCODED=$(cat whoop-tokens.json.b64)" >> $GITHUB_OUTPUT
 
       - name: Create or update WHOOP_TOKENS_JSON secret
-        if: always()  # Run even if sync step failed
+        if: always() && steps.encode.outcome == 'success'
         uses: gliech/create-github-secret-action@v1
         with:
           name: WHOOP_TOKENS_JSON
