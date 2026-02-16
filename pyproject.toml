@@ -17,7 +17,4 @@ dependencies = [
     "requests-oauthlib"
 ]
 
-[project.scripts]
-sync-whoop-gsheets = "sync_whoop_to_gsheets:main"
-
 [tool.uv] 

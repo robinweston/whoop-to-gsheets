@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import subprocess
 from dotenv import load_dotenv
 from flask import Flask, request, redirect
 from requests_oauthlib import OAuth2Session
@@ -104,8 +105,6 @@ def start_auth_web_server(token_file, port=5000):
     cert_file = "localhost.pem"
     key_file = "localhost-key.pem"
     if not (os.path.exists(cert_file) and os.path.exists(key_file)):
-        import subprocess
-
         logger.info(f"Generating self-signed certificate for {redirect_uri}")
         subprocess.run(
             [

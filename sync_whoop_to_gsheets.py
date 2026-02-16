@@ -1,5 +1,8 @@
+import base64
+import subprocess
 import click
 import logging
+from pathlib import Path
 from dotenv import load_dotenv
 import gspread
 from google.oauth2.service_account import Credentials
@@ -243,8 +246,32 @@ def sync(days_ago, sheet_name, creds_path, token_file):
 @click.option('--token-file', default='whoop-tokens.json', show_default=True, help='Path to WHOOP OAuth token JSON file')
 @click.option('--port', default=5000, show_default=True, help='Port for local HTTPS server')
 def whoop_auth(token_file, port):
-    """Start a local HTTPS server to obtain WHOOP OAuth tokens and save them to a JSON file."""
+    """Start a local HTTPS server to obtain WHOOP OAuth tokens and save to a file."""
     start_auth_web_server(token_file=token_file, port=port)
+
+
+@main.command(name='upload-tokens')
+@click.option('--token-file', default='whoop-tokens.json', show_default=True, help='Path to WHOOP token JSON file')
+def upload_tokens(token_file):
+    """Encode token file as base64 and set WHOOP_TOKENS_JSON in GitHub repo secrets via gh CLI."""
+    path = Path(token_file)
+    if not path.is_file():
+        logger.error("%s not found.", token_file)
+        raise SystemExit(1)
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    try:
+        subprocess.run(
+            ["gh", "secret", "set", "WHOOP_TOKENS_JSON", "--body", encoded],
+            check=True,
+        )
+        logger.info("WHOOP_TOKENS_JSON secret updated in GitHub.")
+    except FileNotFoundError:
+        logger.error("gh CLI not found. Install it and run from a repo with gh auth.")
+        raise SystemExit(1)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to set secret: %s", e.stderr or e)
+        raise SystemExit(1)
+
 
 if __name__ == "__main__":
     main() 
