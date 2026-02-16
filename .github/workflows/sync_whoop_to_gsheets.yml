@@ -12,6 +12,16 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Keep workflow enabled
+        run: |
+          case "${GITHUB_WORKFLOW_REF:?}" in
+            "${GITHUB_REPOSITORY:?}"/.github/workflows/*.y*ml@*) ;;
+            *) exit 1 ;;
+          esac
+          workflow="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow="${workflow#${GITHUB_REPOSITORY}/.github/workflows/}"
+          gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/enable"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
